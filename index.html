@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Análisis Automatizado de Incidentes y Accidentes</title>
-  <!-- Tailwind CSS CDN para estilos rápidos y responsive -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -35,7 +35,7 @@
         </div>
       </div>
       <span class="text-xs font-mono bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">
-        Motor IA Simulado v2.4
+        Motor IA Simulado v2.5
       </span>
     </div>
   </header>
@@ -101,7 +101,7 @@
       <p class="text-xs text-slate-500 mt-1">Sintetizando modelo de factores subyacentes</p>
     </div>
 
-    <!-- Sección de Resultados (Oculta por defecto) -->
+    <!-- Sección de Resultados -->
     <section id="resultados" class="hidden space-y-8 animate-fade-in">
       
       <!-- Contenedor Dinámico (5 Porqués o SCAT) -->
@@ -121,6 +121,10 @@
               <button onclick="afinarAnalisis()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-all shrink-0">
                 Ajustar
               </button>
+            </div>
+            <!-- Feedback visual de actualización -->
+            <div id="msg-confirmacion" class="hidden text-xs text-emerald-400 font-medium flex items-center gap-1 pt-1">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i> ¡Análisis y Plan de Acción re-estructurados con tu información!
             </div>
           </div>
         </div>
@@ -153,10 +157,11 @@
   </main>
 
   <script>
-    // Inicializar Iconos de Lucide
     lucide.createIcons();
 
-    // Alternar estilos visuales al cambiar el Radio Button
+    // Variable global para almacenar las palabras clave extraídas del último análisis
+    let palabrasClaveActuales = null;
+
     function actualizarSeleccion() {
       const tipo = document.querySelector('input[name="tipoEvento"]:checked').value;
       const lblInc = document.getElementById('lbl-incidente');
@@ -174,7 +179,6 @@
       }
     }
 
-    // Proceso Principal
     function procesarAnalisis() {
       const desc = document.getElementById('descripcion').value.trim();
       if (!desc) {
@@ -183,12 +187,14 @@
       }
 
       document.getElementById('resultados').classList.add('hidden');
+      document.getElementById('msg-confirmacion').classList.add('hidden');
+      document.getElementById('respuesta-ia').value = '';
       document.getElementById('loader').classList.remove('hidden');
 
-      // Simulación de procesamiento de IA (1.2 segundos)
       setTimeout(() => {
         document.getElementById('loader').classList.add('hidden');
         const tipo = document.querySelector('input[name="tipoEvento"]:checked').value;
+        palabrasClaveActuales = extraerPalabrasClave(desc);
         
         if (tipo === 'incidente') {
           generar5Porques(desc);
@@ -198,18 +204,17 @@
 
         document.getElementById('resultados').classList.remove('hidden');
         lucide.createIcons();
-      }, 1200);
+      }, 1000);
     }
 
-    // Motor Heurístico para 5 Porqués
     function generar5Porques(desc) {
-      const keywords = extraerPalabrasClave(desc);
+      const keywords = palabrasClaveActuales;
       const contenedor = document.getElementById('contenido-analisis');
 
       const porque1 = `¿Por qué ocurrió el incidente? -> Se produjo una desviación operativa directa debido a ${keywords.accion}.`;
       const porque2 = `¿Por qué ocurrió lo anterior? -> Existían condiciones subestándares en la zona de trabajo con ${keywords.equipo}.`;
       const porque3 = `¿Por qué se presentó esa condición/acto? -> La verificación u organización previa a la tarea omitió asegurar ${keywords.contexto}.`;
-      const porque4 = `¿Por qué no se corrigió oportunamente? -> Falta de aplicación rigurosa de los controles definidos en el IPERC / PETS correspondiente.`;
+      const porque4 = `¿Por me no se corrigió oportunamente? -> Falta de aplicación rigurosa de los controles definidos en el IPERC / PETS correspondiente.`;
       const porque5 = `¿Por qué falló el control? -> Causa Raíz: Ineficiencia en los mecanismos de supervisión operativa e inspecciones de seguridad previa en planta.`;
 
       contenedor.innerHTML = `
@@ -219,14 +224,26 @@
             Análisis de Causa Raíz: Método de los 5 Porqués
           </h3>
           <div class="space-y-3 font-sans">
-            ${[porque1, porque2, porque3, porque4, porque5].map((p, i) => `
-              <div class="p-3 bg-slate-900/60 border border-slate-700/50 rounded-lg flex gap-3 items-start">
-                <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono text-xs px-2.5 py-1 rounded font-bold shrink-0">
-                  ${i + 1}º Porqué
-                </span>
-                <p class="text-xs text-slate-200 mt-0.5">${p}</p>
-              </div>
-            `).join('')}
+            <div class="p-3 bg-slate-900/60 border border-slate-700/50 rounded-lg flex gap-3 items-start">
+              <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono text-xs px-2.5 py-1 rounded font-bold shrink-0">1º Porqué</span>
+              <p class="text-xs text-slate-200 mt-0.5">${porque1}</p>
+            </div>
+            <div class="p-3 bg-slate-900/60 border border-slate-700/50 rounded-lg flex gap-3 items-start">
+              <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono text-xs px-2.5 py-1 rounded font-bold shrink-0">2º Porqué</span>
+              <p class="text-xs text-slate-200 mt-0.5">${porque2}</p>
+            </div>
+            <div class="p-3 bg-slate-900/60 border border-slate-700/50 rounded-lg flex gap-3 items-start">
+              <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono text-xs px-2.5 py-1 rounded font-bold shrink-0">3º Porqué</span>
+              <p class="text-xs text-slate-200 mt-0.5">${porque3}</p>
+            </div>
+            <div class="p-3 bg-slate-900/60 border border-slate-700/50 rounded-lg flex gap-3 items-start">
+              <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono text-xs px-2.5 py-1 rounded font-bold shrink-0">4º Porqué</span>
+              <p class="text-xs text-slate-200 mt-0.5">${porque4}</p>
+            </div>
+            <div class="p-3 bg-amber-950/40 border border-amber-500/50 rounded-lg flex gap-3 items-start">
+              <span class="bg-amber-500 text-slate-950 font-mono text-xs px-2.5 py-1 rounded font-bold shrink-0">5º Porqué (Causa Raíz)</span>
+              <p id="texto-causa-raiz" class="text-xs text-amber-200 font-medium mt-0.5">${porque5}</p>
+            </div>
           </div>
         </div>
       `;
@@ -241,9 +258,8 @@
       ]);
     }
 
-    // Motor Heurístico para Tabla SCAT
     function generarSCAT(desc) {
-      const keywords = extraerPalabrasClave(desc);
+      const keywords = palabrasClaveActuales;
       const contenedor = document.getElementById('contenido-analisis');
 
       contenedor.innerHTML = `
@@ -254,20 +270,16 @@
           </h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            
-            <!-- 1. Evaluación de Pérdida -->
             <div class="p-4 bg-slate-900/70 border border-slate-700 rounded-lg">
               <span class="text-red-400 font-bold uppercase font-mono block mb-1">1. Evaluación de Pérdida</span>
               <p class="text-slate-200">Potencial de daño personal y/o material en el área de ${keywords.area}.</p>
             </div>
 
-            <!-- 2. Tipo de Contacto -->
             <div class="p-4 bg-slate-900/70 border border-slate-700 rounded-lg">
               <span class="text-amber-400 font-bold uppercase font-mono block mb-1">2. Tipo de Contacto / Incidente</span>
               <p class="text-slate-200">${keywords.contacto}</p>
             </div>
 
-            <!-- 3. Causas Inmediatas -->
             <div class="p-4 bg-slate-900/70 border border-slate-700 rounded-lg space-y-2">
               <span class="text-amber-300 font-bold uppercase font-mono block">3. Causas Inmediatas (Síntomas)</span>
               <div>
@@ -280,7 +292,6 @@
               </div>
             </div>
 
-            <!-- 4. Causas Básicas -->
             <div class="p-4 bg-slate-900/70 border border-slate-700 rounded-lg space-y-2">
               <span class="text-indigo-300 font-bold uppercase font-mono block">4. Causas Básicas (Raíz)</span>
               <div>
@@ -292,13 +303,11 @@
                 <p class="text-slate-200">Supervisión/Liderazgo insuficiente para verificar la tarea e ingeniería de soporte deficiente.</p>
               </div>
             </div>
-
           </div>
 
-          <!-- 5. Falta de Control -->
-          <div class="p-4 bg-slate-900/70 border border-red-500/20 rounded-lg text-xs">
+          <div class="p-4 bg-red-950/40 border border-red-500/40 rounded-lg text-xs">
             <span class="text-red-400 font-bold uppercase font-mono block mb-1">5. Falta de Control (Falla en el Sistema de Gestión)</span>
-            <p class="text-slate-200">Deficiencia en el Elemento de <strong>Inspecciones Planeadas & Control de Procedimientos de Trabajo</strong>. Inadecuada verificación en campo de las condiciones pre-operativas.</p>
+            <p id="texto-causa-raiz" class="text-slate-200">Deficiencia en el Elemento de <strong>Inspecciones Planeadas & Control de Procedimientos de Trabajo</strong>. Inadecuada verificación en campo de las condiciones pre-operativas.</p>
           </div>
         </div>
       `;
@@ -313,7 +322,46 @@
       ]);
     }
 
-    // Renderizar Tabla de Planes de Acción
+    // FUNCIÓN DE AJUSTE DINÁMICO CORREGIDA
+    function afinarAnalisis() {
+      const resp = document.getElementById('respuesta-ia').value.trim();
+      if (!resp) {
+        alert('Por favor, ingresa un dato de precisión en el campo de texto.');
+        return;
+      }
+
+      const nodoCausaRaiz = document.getElementById('texto-causa-raiz');
+      const tipo = document.querySelector('input[name="tipoEvento"]:checked').value;
+
+      if (nodoCausaRaiz) {
+        if (tipo === 'incidente') {
+          nodoCausaRaiz.innerHTML = `¿Por qué falló el control? -> Causa Raíz Re-evaluada: Deficiencia en el control operacional. <span class="text-amber-300 underline font-semibold">Dato de confirmación:</span> "${resp}". Falla en la verificación previa por parte de la supervisión.`;
+        } else {
+          nodoCausaRaiz.innerHTML = `Deficiencia en el Elemento de <strong>Evaluación de Riesgo y Control de Procedimientos</strong>. <span class="text-red-300 underline font-semibold">Validación del análisis:</span> "${resp}". Falla en el aseguramiento del permiso de trabajo (PETAR/IPERC) previo al inicio de las tareas.`;
+        }
+      }
+
+      // Agregar automáticamente una nueva medida al plan de acción
+      const tbody = document.getElementById('tabla-plan-accion');
+      const nuevaFila = document.createElement('tr');
+      nuevaFila.className = "bg-indigo-950/30 border-l-2 border-indigo-400";
+      nuevaFila.innerHTML = `
+        <td class="p-3 font-medium text-indigo-200">Ajustar PETS/IPERC incorporando el control: "${resp}"</td>
+        <td class="p-3">
+          <span class="px-2 py-0.5 bg-indigo-900 border border-indigo-700 rounded text-indigo-300 font-mono">
+            Administrativo (IA)
+          </span>
+        </td>
+        <td class="p-3 text-indigo-300">Precisión ingresada por el usuario</td>
+      `;
+      tbody.prepend(nuevaFila);
+
+      // Feedback visual al usuario
+      document.getElementById('msg-confirmacion').classList.remove('hidden');
+      document.getElementById('respuesta-ia').value = '';
+      lucide.createIcons();
+    }
+
     function renderizarPlanAccion(lista) {
       const tbody = document.getElementById('tabla-plan-accion');
       tbody.innerHTML = lista.map(item => `
@@ -329,7 +377,6 @@
       `).join('');
     }
 
-    // Extraer Palabras Clave Heurísticas del Texto
     function extraerPalabrasClave(texto) {
       const txt = texto.toLowerCase();
       let equipo = "equipo de trabajo / herramienta";
@@ -365,14 +412,6 @@
       }
 
       return { equipo, accion, contacto, contexto, area };
-    }
-
-    // Botón de Ajuste
-    function afinarAnalisis() {
-      const resp = document.getElementById('respuesta-ia').value.trim();
-      if (!resp) return;
-      alert('¡Análisis afinado con éxito! Se ha actualizado la causa raíz del informe con el dato ingresado.');
-      document.getElementById('respuesta-ia').value = '';
     }
   </script>
 </body>
