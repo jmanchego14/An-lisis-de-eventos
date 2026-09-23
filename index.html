@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analizador de Seguridad SST (Sin API)</title>
+    <title>Analizador Inteligente de Causa Raíz SST</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -53,7 +53,7 @@
             font-size: 0.9rem;
         }
 
-        textarea, input[type="text"] {
+        textarea, input[type="text"], input[type="password"] {
             width: 100%;
             background: #1f2937;
             border: 1px solid #374151;
@@ -109,6 +109,11 @@
 
         .btn-analizar:hover {
             background-color: #4338ca;
+        }
+
+        .btn-analizar:disabled {
+            background-color: #374151;
+            cursor: not-allowed;
         }
 
         /* Estilos Metodología SCAT */
@@ -169,195 +174,157 @@
             font-size: 0.95rem;
             line-height: 1.4;
         }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>⚡ Módulo de Investigación de Causa Raíz SST</h2>
+    <h2>⚡ Módulo Inteligente de Investigación SST (SCAT / 5 Porqués)</h2>
     
     <div class="input-section">
+        <label for="api_key">Clave API de OpenAI (sk-...):</label>
+        <input type="password" id="api_key" placeholder="Ingrese su OpenAI API Key para activar la IA experta...">
+
         <label for="incidente">Descripción del Evento:</label>
-        <textarea id="incidente" placeholder="Ingrese la descripción del evento para analizar...">El día 22/09/2026, a las 15:20 horas, el colaborador Evel Tavara realizaba labores de pintado de un contenedor. La pistola se obstruyó y el trabajador procedió a ajustar la boquilla de forma manual sosteniendo el cuerpo con la mano derecha (dedos en el gatillo) y la mano izquierda frente a la boquilla. Accionó involuntariamente el gatillo, generando una descarga a presión que provocó una lesión superficial en su mano izquierda.</textarea>
+        <textarea id="incidente" placeholder="Ingrese la descripción del evento...">El día 22/09/2026, a las 15:20 horas, el colaborador Evel Tavara realizaba labores de pintado de un contenedor. La pistola se obstruyó y el trabajador procedió a ajustar la boquilla de forma manual sosteniendo el cuerpo con la mano derecha (dedos en el gatillo) y la mano izquierda frente a la boquilla. Accionó involuntariamente el gatillo, generando una descarga a presión que provocó una lesión superficial en su mano izquierda.</textarea>
         
         <div class="selector-tipo">
             <span style="font-weight: 600; font-size: 0.9rem;">Tipificación:</span>
             <label class="radio-label">
-                <input type="radio" name="tipo_evento" value="accidente" checked onchange="generarAnalisisSST()"> Accidente de Trabajo (Análisis SCAT)
+                <input type="radio" name="tipo_evento" value="accidente" checked> Accidente de Trabajo (Metodología SCAT)
             </label>
             <label class="radio-label">
-                <input type="radio" name="tipo_evento" value="incidente" onchange="generarAnalisisSST()"> Incidente / Casi-Accidente (5 Porqués)
+                <input type="radio" name="tipo_evento" value="incidente"> Incidente / Casi-Accidente (5 Porqués)
             </label>
         </div>
 
         <label for="datos_extra">Datos adicionales / Precisiones del Investigador (Opcional):</label>
-        <input type="text" id="datos_extra" placeholder="Ej: No contaba con PETS firmado, omitió despresurización previo al ajuste..." oninput="generarAnalisisSST()">
+        <input type="text" id="datos_extra" placeholder="Ej: No contaba con PETS firmado, omisión de bloqueo de energía residual...">
 
-        <button class="btn-analizar" onclick="generarAnalisisSST()">Generar Análisis de Causa Raíz</button>
+        <button class="btn-analizar" id="btnProcesar" onclick="analizarConIA()">Generar Análisis Inteligente SST</button>
     </div>
 
+    <div id="loader" class="loader">🧠 Analizando evento con criterio de Experto SST...</div>
     <div id="contenedor-resultados"></div>
 </div>
 
 <script>
-function extraerDatos(texto) {
-    const t = texto.toLowerCase();
-
-    // 1. Detección de Lesión o Zona afectada
-    let lesion = "lesión o alteración de la salud del trabajador";
-    if (t.includes("mano izquierda")) lesion = "lesión en la mano izquierda";
-    else if (t.includes("mano derecha")) lesion = "lesión en la mano derecha";
-    else if (t.includes("mano")) lesion = "lesión en la extremidad superior (mano)";
-    else if (t.includes("ojo") || t.includes("vista")) lesion = "lesión en el órgano de la visión (ojo)";
-    else if (t.includes("pie") || t.includes("pierna")) lesion = "lesión en extremidades inferiores";
-    else if (t.includes("dedo")) lesion = "lesión en extremidad distal (dedo)";
-    else if (t.includes("herida")) lesion = "herida de carácter directo en tejido expuesto";
-
-    // 2. Fuente o Mecanismo de Liberación de Energía
-    let fuenteEnergia = "contacto o liberación de energía en el puesto de trabajo";
-    if (t.includes("presion") || t.includes("presión") || t.includes("descarga") || t.includes("pistola") || t.includes("boquilla")) {
-        fuenteEnergia = "descarga / eyección de fluido o aire a alta presión desde el equipo";
-    } else if (t.includes("chispa") || t.includes("esmeril") || t.includes("corte") || t.includes("amoldado")) {
-        fuenteEnergia = "proyección de partículas o material incandescente";
-    } else if (t.includes("caida") || t.includes("caída") || t.includes("resbalon")) {
-        fuenteEnergia = "impacto por caída de nivel / pérdida de equilibrio";
-    }
-
-    // 3. Actos Subestándares detectados
-    let actos = [];
-    if (t.includes("linea de fuego") || t.includes("línea de fuego") || t.includes("frente a la boquilla") || t.includes("encima")) {
-        actos.push("Ubicación directa de la mano u órganos en la línea de fuego del equipo");
-    }
-    if (t.includes("gatillo") || t.includes("dedos en el gatillo")) {
-        actos.push("Manipulación de la herramienta manteniendo el dedo/contacto sobre el gatillo de disparo");
-    }
-    if (t.includes("ajustar") || t.includes("manual") || t.includes("desobstruir") || t.includes("regular")) {
-        actos.push("Intervención manual directa del mecanismo sin aplicar el protocolo previo de despresurización o aislamiento");
-    }
-    if (actos.length === 0) {
-        actos.push("Maniobra de regulación o manipulación fuera del estándar de seguridad establecido");
-    }
-
-    // 4. Condición Subestándar o Desviación del Operacional
-    let condicion = "Falla operacional o interrupción durante la tarea regular";
-    if (t.includes("obstruy") || t.includes("obstrucc") || t.includes("atoro") || t.includes("bloqueo")) {
-        condicion = "Obstrucción / atascamiento del fluido que interrumpió la operación normal del equipo";
-    } else if (t.includes("falla") || t.includes("desperfecto")) {
-        condicion = "Desperfecto o comportamiento irregular de la herramienta en uso";
-    }
-
-    // 5. Involucrado
-    let persona = "el trabajador";
-    const coincidencia = texto.match(/(?:Sr\.|colaborador|operario)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-    if (coincidencia) {
-        persona = "el trabajador " + coincidencia[1];
-    }
-
-    return { lesion, fuenteEnergia, actos, condicion, persona };
-}
-
-function generarAnalisisSST() {
+async function analizarConIA() {
+    const apiKey = document.getElementById('api_key').value.trim();
     const texto = document.getElementById('incidente').value.trim();
     const datosExtra = document.getElementById('datos_extra').value.trim();
     const esAccidente = document.querySelector('input[name="tipo_evento"]:checked').value === 'accidente';
     const contenedor = document.getElementById('contenedor-resultados');
+    const loader = document.getElementById('loader');
+    const btn = document.getElementById('btnProcesar');
 
+    if (!apiKey) {
+        alert("Por favor, ingrese una clave de API válida de OpenAI.");
+        return;
+    }
     if (!texto) {
-        contenedor.innerHTML = "";
+        alert("Ingrese la descripción del incidente.");
         return;
     }
 
-    const d = extraerDatos(texto);
+    loader.style.display = "block";
     contenedor.innerHTML = "";
+    btn.disabled = true;
 
+    // Construcción del Prompt Experto para SST
+    let promptSistema = "";
     if (esAccidente) {
-        // Análisis Metodología SCAT
-        const datosSCAT = [
-            {
-                etapa: "1. EVALUACIÓN DE LA PÉRDIDA (Daño / Lesión)",
-                clase: "critico",
-                detalle: `Ocurrencia de ${d.lesion} que afectó la integridad física de ${d.persona}.`
-            },
-            {
-                etapa: "2. EVENTO / INCIDENTE (Contacto con Energía)",
-                clase: "",
-                detalle: `Contacto directo por ${d.fuenteEnergia}.`
-            },
-            {
-                etapa: "3. CAUSAS INMEDIATAS (Actos y Condiciones Subestándares)",
-                clase: "",
-                detalle: `• Actos Subestándares: ${d.actos.join('; ')}.\n• Condición Subestándar: ${d.condicion}.${datosExtra ? '\n• Aporte / Observación del Investigador: ' + datosExtra : ''}`
-            },
-            {
-                etapa: "4. CAUSAS BÁSICAS (Factores Personales y de Trabajo)",
-                clase: "",
-                detalle: `• Factores Personales: Subestimación del riesgo de energía residual (presión/línea de fuego) e intento de solucionar la falla mediante una maniobra empírica.\n• Factores de Trabajo: Inadecuada difusión o falta de claridad en el procedimiento de despresurización y purga segura del equipo.`
-            },
-            {
-                etapa: "5. FALLA DE CONTROL (Causa Raíz SCAT / Control Administrativo)",
-                clase: "raiz",
-                detalle: `Causa Raíz SCAT: Ineficiencia en el programa de instrucción práctica sobre manejo de energías peligrosas / equipos a presión y falta de seguimiento operativo para identificar y corregir actos subestándares en planta.`
-            }
-        ];
-
-        datosSCAT.forEach(item => {
-            const div = document.createElement('div');
-            div.className = `scat-card ${item.clase}`;
-            div.innerHTML = `
-                <div class="scat-title">${item.etapa}</div>
-                <div class="content-text" style="white-space: pre-line;">${item.detalle}</div>
-            `;
-            contenedor.appendChild(div);
-        });
-
+        promptSistema = `Eres un auditor experto en Seguridad y Salud en el Trabajo (SST). Analiza el siguiente Accidente de Trabajo usando la metodología SCAT (Systematic Cause Analysis Technique).
+Devuelve UNICAMENTE un objeto JSON con la siguiente estructura exacta:
+{
+  "metodologia": "SCAT",
+  "items": [
+    {"etapa": "1. EVALUACIÓN DE LA PÉRDIDA", "clase": "critico", "detalle": "..."},
+    {"etapa": "2. EVENTO / INCIDENTE (Contacto)", "clase": "", "detalle": "..."},
+    {"etapa": "3. CAUSAS INMEDIATAS (Actos y Condiciones)", "clase": "", "detalle": "..."},
+    {"etapa": "4. CAUSAS BÁSICAS (Factores Personales y de Trabajo)", "clase": "", "detalle": "..."},
+    {"etapa": "5. FALLA DE CONTROL (Causa Raíz SCAT)", "clase": "raiz", "detalle": "..."}
+  ]
+}`;
     } else {
-        // Análisis Metodología 5 Porqués (Para Incidentes)
-        const datosPorques = [
-            {
-                num: "1º Porqué",
-                pregunta: "¿Por qué ocurrió el evento?",
-                respuesta: `Ocurrió una ${d.fuenteEnergia} en la zona de trabajo.`
-            },
-            {
-                num: "2º Porqué",
-                pregunta: "¿Por qué se expuso el trabajador al peligro?",
-                respuesta: `Porque se incurrió en el siguiente acto: ${d.actos[0].toLowerCase()}.`
-            },
-            {
-                num: "3º Porqué",
-                pregunta: "¿Por qué se realizó la maniobra de forma insegura?",
-                respuesta: `Porque ante la condición de ${d.condicion.toLowerCase()}, se buscó destrabar o ajustar el equipo sin realizar el corte de energía o despresurización previa.`
-            },
-            {
-                num: "4º Porqué",
-                pregunta: "¿Por qué no se aplicó el estándar seguro de trabajo?",
-                respuesta: `Falta de adherencia e interiorización de los controles definidos en el PETS e IPERC para intervención de equipos bajo presión.${datosExtra ? ' (' + datosExtra + ')' : ''}`
-            },
-            {
-                num: "5º Porqué (Causa Raíz)",
-                pregunta: "¿Por qué falló el sistema de prevención?",
-                respuesta: `Causa Raíz: Deficiencia en la capacitación práctica sobre liberación de presiones residuales e insuficiente supervisión de seguridad en el taller.`,
-                esRaiz: true
-            }
-        ];
+        promptSistema = `Eres un auditor experto en Seguridad y Salud en el Trabajo (SST). Analiza el siguiente Incidente/Casi-Accidente usando el Método de los 5 Porqués.
+Devuelve UNICAMENTE un objeto JSON con la siguiente estructura exacta:
+{
+  "metodologia": "5PORQUES",
+  "items": [
+    {"num": "1º Porqué", "pregunta": "...", "respuesta": "..."},
+    {"num": "2º Porqué", "pregunta": "...", "respuesta": "..."},
+    {"num": "3º Porqué", "pregunta": "...", "respuesta": "..."},
+    {"num": "4º Porqué", "pregunta": "...", "respuesta": "..."},
+    {"num": "5º Porqué (Causa Raíz)", "pregunta": "...", "respuesta": "...", "esRaiz": true}
+  ]
+}`;
+    }
 
-        datosPorques.forEach(item => {
-            const div = document.createElement('div');
-            div.className = `porque-box ${item.esRaiz ? 'causa-raiz' : ''}`;
-            div.innerHTML = `
-                <span class="badge">${item.num}</span>
-                <div>
-                    <div style="font-weight:bold; color:#9ca3af; font-size:0.85rem; margin-bottom:2px;">${item.pregunta}</div>
-                    <div class="content-text">${item.respuesta}</div>
-                </div>
-            `;
-            contenedor.appendChild(div);
+    const payloadUser = `Descripción del evento: ${texto}\nDatos adicionales del investigador: ${datosExtra || "Ninguno"}`;
+
+    try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [
+                    { role: "system", content: promptSistema },
+                    { role: "user", content: payloadUser }
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.2
+            })
         });
+
+        const data = await response.json();
+        const resultado = JSON.parse(data.choices[0].message.content);
+
+        // Renderizado dinámico garantizado por IA
+        if (resultado.metodologia === "SCAT") {
+            resultado.items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `scat-card ${item.clase}`;
+                div.innerHTML = `
+                    <div class="scat-title">${item.etapa}</div>
+                    <div class="content-text" style="white-space: pre-line;">${item.detalle}</div>
+                `;
+                contenedor.appendChild(div);
+            });
+        } else {
+            resultado.items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `porque-box ${item.esRaiz ? 'causa-raiz' : ''}`;
+                div.innerHTML = `
+                    <span class="badge">${item.num}</span>
+                    <div>
+                        <div style="font-weight:bold; color:#9ca3af; font-size:0.85rem; margin-bottom:2px;">${item.pregunta}</div>
+                        <div class="content-text">${item.respuesta}</div>
+                    </div>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+    } catch (error) {
+        alert("Error al conectar con la API: " + error.message);
+    } finally {
+        loader.style.display = "none";
+        btn.disabled = false;
     }
 }
-
-// Genera el análisis al abrir la página
-window.onload = generarAnalisisSST;
 </script>
 
 </body>
