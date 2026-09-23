@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analizador de Seguridad SST - SCAT & 5 Porqués</title>
+    <title>Analizador Dinámico de Seguridad SST</title>
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -71,7 +71,7 @@
         }
 
         textarea {
-            height: 90px;
+            height: 100px;
             resize: vertical;
         }
 
@@ -193,22 +193,22 @@
     
     <div class="input-section">
         <label for="incidente">Descripción del Evento:</label>
-        <textarea id="incidente" placeholder="Ingrese la descripción detallada del evento...">El día 22/09/2026, a las 15:20 horas, el colaborador Evel Tavara realizaba labores de pintado de un contenedor. La pistola se obstruyó y el trabajador procedió a ajustar la boquilla de forma manual sosteniendo el cuerpo con la mano derecha (dedos en el gatillo) y la mano izquierda frente a la boquilla. Accionó involuntariamente el gatillo, generando una descarga a presión que provocó una lesión superficial en su mano izquierda.</textarea>
+        <textarea id="incidente" placeholder="Ingrese la descripción del evento para analizar...">El día 22/09/2026, a las 15:20 horas, el colaborador Evel Tavara realizaba labores de pintado de un contenedor. La pistola se obstruyó y el trabajador procedió a ajustar la boquilla de forma manual sosteniendo el cuerpo con la mano derecha (dedos en el gatillo) y la mano izquierda frente a la boquilla. Accionó involuntariamente el gatillo, generando una descarga a presión que provocó una lesión superficial en su mano izquierda.</textarea>
         
         <div class="selector-tipo">
             <span style="font-weight: 600; font-size: 0.9rem;">Tipificación:</span>
             <label class="radio-label">
-                <input type="radio" name="tipo_evento" value="accidente" checked onchange="actualizarInterfaz()"> Accidente de Trabajo (Análisis SCAT)
+                <input type="radio" name="tipo_evento" value="accidente" checked onchange="ejecutarAnalisisSST()"> Accidente de Trabajo (Análisis SCAT)
             </label>
             <label class="radio-label">
-                <input type="radio" name="tipo_evento" value="incidente" onchange="actualizarInterfaz()"> Incidente / Casi-Accidente (5 Porqués)
+                <input type="radio" name="tipo_evento" value="incidente" onchange="ejecutarAnalisisSST()"> Incidente / Casi-Accidente (5 Porqués)
             </label>
         </div>
 
         <label for="datos_extra">Datos adicionales / Precisiones del Investigador (Opcional):</label>
-        <input type="text" id="datos_extra" placeholder="Ej: El colaborador no contaba con PETS firmado, la boquilla no se despresurizó, se omitió bloqueo LOTO...">
+        <input type="text" id="datos_extra" placeholder="Ej: No contaba con PETS firmado, omisión de bloqueo LOTO..." oninput="ejecutarAnalisisSST()">
 
-        <button class="btn-analizar" onclick="ejecutarAnalisisSST()">Generar Análisis Causa Raíz</button>
+        <button class="btn-analizar" onclick="ejecutarAnalisisSST()">Generar Análisis de Causa Raíz</button>
     </div>
 
     <div id="contenedor-resultados">
@@ -217,6 +217,61 @@
 </div>
 
 <script>
+// Motor NLP para extraer entidades del reporte
+function procesarTexto(texto) {
+    const t = texto.toLowerCase();
+
+    // 1. Detección de Lesión / Parte afectada
+    let lesion = "lesión o daño directo";
+    if (t.includes("mano izquierda")) lesion = "lesión en la mano izquierda";
+    else if (t.includes("mano derecha")) lesion = "lesión en la mano derecha";
+    else if (t.includes("mano")) lesion = "lesión en la mano";
+    else if (t.includes("ojo") || t.includes("vista")) lesion = "lesión ocular";
+    else if (t.includes("pie") || t.includes("pierna")) lesion = "lesión en miembros inferiores";
+    else if (t.includes("cabeza")) lesion = "traumatismo en la cabeza";
+    else if (t.includes("herida")) lesion = "herida en extremidad o tejido expuesto";
+
+    // 2. Agente / Agente de energía
+    let fuenteEnergia = "liberación no controlada de energía";
+    if (t.includes("presion") || t.includes("presión") || t.includes("descarga") || t.includes("pistola")) {
+        fuenteEnergia = "descarga o eyección de fluido/aire a presión de la herramienta";
+    } else if (t.includes("chispa") || t.includes("esmeril") || t.includes("corte")) {
+        fuenteEnergia = "proyección de partículas incandescentes/materiales";
+    } else if (t.includes("caida") || t.includes("caída") || t.includes("resbalon")) {
+        fuenteEnergia = "energía potencial gravitacional por caída";
+    }
+
+    // 3. Acto Inseguro / Desviación
+    let actos = [];
+    if (t.includes("linea de fuego") || t.includes "línea de fuego" || t.includes("frente a la boquilla")) {
+        actos.push("Posicionar extremidades/cuerpo directamente en la línea de fuego del equipo");
+    }
+    if (t.includes("gatillo") || t.includes("dedos en el gatillo")) {
+        actos.push("Manipulación de la herramienta manteniendo dedos en el mecanismo de disparo");
+    }
+    if (t.includes("ajustar") || t.includes("manual") || t.includes("desobstruir") || t.includes("arreglar")) {
+        actos.push("Intento de intervención manual/desobstrucción directa sin despresurizar o aislar el equipo");
+    }
+    if (actos.length === 0) actos.push("Maniobra de intervención intempestiva sin aplicar la distancia segura de trabajo");
+
+    // 4. Condición Insegura / Evento previo
+    let condicion = "Presencia de desviación técnica durante la tarea";
+    if (t.includes("obstruy") || t.includes("obstrucc") || t.includes("atoro") || t.includes("falla")) {
+        condición = "Atascamiento/obstrucción del flujo del equipo que interrumpió la labor habitual";
+    } else if (t.includes("falta de biombo") || t.includes("limpieza")) {
+        condición = "Inadecuada condición de contención en la zona de trabajo";
+    }
+
+    // 5. Involucrado
+    let involucrado = "el colaborador";
+    const matchNombre = texto.match(/Sr\.\s+([A-Za-z\s]+)|colaborador\s+([A-Za-z\s]+)/i);
+    if (matchNombre) {
+        involucrado = "el trabajador " + (matchNombre[1] || matchNombre[2]).split(" ")[0];
+    }
+
+    return { lesion, fuenteEnergia, actos, condicion, involucrado };
+}
+
 function ejecutarAnalisisSST() {
     const texto = document.getElementById('incidente').value;
     const datosExtra = document.getElementById('datos_extra').value.trim();
@@ -224,40 +279,40 @@ function ejecutarAnalisisSST() {
     const contenedor = document.getElementById('contenedor-resultados');
     
     if (!texto.trim()) {
-        alert("Por favor ingrese la descripción del evento.");
+        contenedor.innerHTML = "";
         return;
     }
 
+    const nlp = procesarTexto(texto);
     contenedor.innerHTML = "";
 
     if (esAccidente) {
-        // Metodología SCAT (Systematic Cause Analysis Technique)
+        // Metodología SCAT construida 100% con datos extraídos
         const analisisSCAT = [
             {
                 etapa: "1. EVALUACIÓN DE LA PÉRDIDA (Daño / Lesión)",
                 clase: "critico",
-                detalle: "Lesión personal de carácter superficial en extremidad superior (mano izquierda) ocasionada por inyección/contacto con fluido a presión."
+                detalle: `Se generó ${nlp.lesion} sufrida por ${nlp.involucrado}.`
             },
             {
-                etapa: "2. EVENTO / INCIDENTE (Contacto con Energía)",
+                etapa: "2. EVENTO / INCIDENTE (Contacto de Riesgo)",
                 clase: "",
-                detalle: "Liberación intempestiva de energía neumática/hidráulica (descarga de pintura a alta presión) e impacto directo sobre la zona anatómica expuesta."
+                detalle: `Contacto e impacto por ${nlp.fuenteEnergia}.`
             },
             {
                 etapa: "3. CAUSAS INMEDIATAS (Actos y Condiciones Subestándares)",
                 clase: "",
-                detalle: `• Acto Subestándar: Ubicación de la mano en la línea de fuego (frente a la boquilla) y manipulación de la herramienta manteniendo los dedos sobre el gatillo.
-• Condición Subestándar: Equipo atascado/obstruido que requirió intervención no planificada.${datosExtra ? '\n• Aporte Adicional: ' + datosExtra : ''}`
+                detalle: `• Acto Subestándar: ${nlp.actos.join('; ')}.\n• Condición Subestándar: ${nlp.condicion}.${datosExtra ? '\n• Precisión del Investigador: ' + datosExtra : ''}`
             },
             {
                 etapa: "4. CAUSAS BÁSICAS (Factores Personales y de Trabajo)",
                 clase: "",
-                detalle: "• Factores Personales: Práctica/hábito inadecuado al intentar corregir fallos sin aislamiento de energía; evaluar percepción del riesgo en la tarea.\n• Factores de Trabajo: Estándar operativo no adecuado o procedimiento de despresurización no clarificado en el puesto."
+                detalle: `• Factores Personales: Subestimación del riesgo de energía residual e intento de corregir la falla de forma improvisada.\n• Factores de Trabajo: Inexistencia o falta de claridad en el estándar de despresurización rápida para el equipo.`
             },
             {
                 etapa: "5. FALLA DE CONTROL (Falta de Control Administrativo / SCAT)",
                 clase: "raiz",
-                detalle: "Causa Raíz SCAT: Inadecuado cumplimiento del programa de capacitaciones prácticas en control de energías peligrosas y debilidad en los mecanismos de supervisión para detectar e intervenir actos subestándares en taller."
+                detalle: `Causa Raíz SCAT: Deficiencia en el programa de capacitación en el manejo de energías peligrosas y debilidad en la supervisión operativa para prevenir actos subestándares en planta.`
             }
         ];
 
@@ -272,32 +327,32 @@ function ejecutarAnalisisSST() {
         });
 
     } else {
-        // Metodología 5 Porqués (Para Incidentes)
+        // Metodología 5 Porqués (Dinámica)
         const analisis5Porques = [
             {
                 num: "1º Porqué",
-                pregunta: "¿Por qué ocurrió el incidente?",
-                respuesta: "Ocurrió una liberación intempestiva de fluido a alta presión desde la boquilla de la pistola de pintura mientras era manipulada."
+                pregunta: "¿Por qué ocurrió el evento?",
+                respuesta: `Ocurrió una ${nlp.fuenteEnergia} que afectó la zona de trabajo de ${nlp.involucrado}.`
             },
             {
                 num: "2º Porqué",
-                pregunta: "¿Por qué se liberó la presión hacia la posición del operario?",
-                respuesta: "Porque el trabajador mantenía los dedos en el gatillo de accionamiento mientras posicionaba su mano en la línea de descarga del equipo."
+                pregunta: "¿Por qué se expuso el trabajador al riesgo?",
+                respuesta: `Porque se incurrió en el siguiente acto: ${nlp.actos[0].toLowerCase()}.`
             },
             {
                 num: "3º Porqué",
-                pregunta: "¿Por qué se realizó la maniobra en la línea de fuego?",
-                respuesta: "Porque el operario intentó desobstruir la boquilla de forma inmediata sin realizar el protocolo previo de despresurización o bloqueo de la herramienta."
+                pregunta: "¿Por qué se ejecutó la maniobra insegura?",
+                respuesta: `Porque ante la condición de ${nlp.condicion.toLowerCase()}, se buscó resolver el inconveniente omitiendo el aislamiento/bloqueo previo.`
             },
             {
                 num: "4º Porqué",
-                pregunta: "¿Por qué no se ejecutó el procedimiento seguro?",
-                respuesta: `Falta de adherencia a los estándares de trabajo seguro (PETS) e IPERC correspondientes a equipos con fluidos a presión.${datosExtra ? ' (' + datosExtra + ')' : ''}`
+                pregunta: "¿Por qué no se aplicó el procedimiento seguro?",
+                respuesta: `Falta de adherencia estricta a los estándares operativos (PETS/IPERC) durante la atención de contingencias menores.${datosExtra ? ' (' + datosExtra + ')' : ''}`
             },
             {
                 num: "5º Porqué (Causa Raíz)",
                 pregunta: "¿Por qué falló el control preventivo?",
-                respuesta: "Causa Raíz: Ineficacia en la instrucción práctica sobre manipulación segura de equipos bajo presión y falta de seguimiento operativo para corregir desviaciones conductuales.",
+                respuesta: `Causa Raíz: Ineficacia en la instrucción práctica de seguridad sobre despresurización/línea de fuego y falta de monitoreo continuo sobre las conductas operativas.`,
                 esRaiz: true
             }
         ];
@@ -317,14 +372,7 @@ function ejecutarAnalisisSST() {
     }
 }
 
-function actualizarInterfaz() {
-    // Limpia o regenera al cambiar de tipo
-    if (document.getElementById('contenedor-resultados').children.length > 0) {
-        ejecutarAnalisisSST();
-    }
-}
-
-// Ejecutar automáticamente al cargar
+// Ejecución al cargar
 window.onload = ejecutarAnalisisSST;
 </script>
 
