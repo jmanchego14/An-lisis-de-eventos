@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis de Causa Raíz - SST</title>
+    <title>Analizador de Causa Raíz SST - 5 Porqués</title>
     <style>
         :root {
             --bg-color: #0b0f19;
             --card-bg: #111827;
             --accent-yellow: #f59e0b;
+            --accent-blue: #3b82f6;
             --text-color: #e5e7eb;
             --border-color: #1f2937;
         }
@@ -41,6 +42,7 @@
             font-size: 1.4rem;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 10px;
+            margin-top: 0;
         }
 
         .input-section {
@@ -55,7 +57,7 @@
 
         textarea {
             width: 100%;
-            height: 100px;
+            height: 110px;
             background: #1f2937;
             border: 1px solid #374151;
             color: #fff;
@@ -64,21 +66,51 @@
             resize: vertical;
             box-sizing: border-box;
             font-family: inherit;
+            font-size: 0.95rem;
         }
 
-        button {
+        .selector-tipo {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            align-items: center;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            background: #1f2937;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .radio-label:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .radio-label input[type="radio"] {
+            accent-color: var(--accent-yellow);
+        }
+
+        .btn-analizar {
             background-color: #4f46e5;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            margin-top: 10px;
+            font-size: 0.95rem;
             transition: background 0.2s;
+            width: 100%;
         }
 
-        button:hover {
+        .btn-analizar:hover {
             background-color: #4338ca;
         }
 
@@ -127,6 +159,7 @@
         .answer {
             color: #f3f4f6;
             font-size: 0.95rem;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -136,9 +169,20 @@
     <h2>⚡ Análisis de Causa Raíz: Método de los 5 Porqués (SST)</h2>
     
     <div class="input-section">
-        <label for="incidente">Descripción del Incidente / Accidente:</label>
-        <textarea id="incidente" placeholder="Ingrese el reporte del incidente...">El día 22/09/2026, el colaborador Evel Tavara sufrió una herida superficial en la mano izquierda por descarga de pintura a presión al intentar desobstruir la boquilla de la pistola manteniendo los dedos en el gatillo y posicionando la mano en la línea de fuego.</textarea>
-        <button onclick="generarAnalisisSST()">Analizar Causa Raíz</button>
+        <label for="incidente">Descripción del Evento:</label>
+        <textarea id="incidente" placeholder="Ingrese la descripción detallada del evento para analizar...">El día 22/09/2026, a las 15:20 horas aproximadamente, el colaborador Evel Tavara realizaba labores de pintado de un contenedor en el taller de mantenimiento. Durante el desarrollo de la actividad, la pistola de pintura sufrió una obstrucción. Al percatarse del desperfecto, el trabajador procedió a ajustar la boquilla de forma manual sosteniendo la pistola con la mano derecha (con los dedos en el gatillo) y la mano izquierda frente a la boquilla. Accionó involuntariamente el gatillo generando una descarga a presión que impactó en su mano izquierda, causándole una lesión superficial.</textarea>
+        
+        <div class="selector-tipo">
+            <span style="font-weight: 600; font-size: 0.9rem;">Tipificación del Evento:</span>
+            <label class="radio-label">
+                <input type="radio" name="tipo_evento" value="accidente" checked> Accidente de Trabajo (hubo lesión)
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="tipo_evento" value="incidente"> Incidente / Casi-Accidente (sin lesión)
+            </label>
+        </div>
+
+        <button class="btn-analizar" onclick="ejecutarAnalisisSST()">Generar Análisis de Causa Raíz</button>
     </div>
 
     <div id="contenedor-porques">
@@ -147,48 +191,94 @@
 </div>
 
 <script>
-function generarAnalisisSST() {
-    const descripcion = document.getElementById('incidente').value;
+function ejecutarAnalisisSST() {
+    const texto = document.getElementById('incidente').value.toLowerCase();
+    const esAccidente = document.querySelector('input[name="tipo_evento"]:checked').value === 'accidente';
     const contenedor = document.getElementById('contenedor-porques');
     
-    if (!descripcion.trim()) {
-        alert("Por favor ingrese la descripción de un incidente.");
+    if (!texto.trim()) {
+        alert("Por favor ingrese la descripción del evento.");
         return;
     }
 
-    // Lógica del Experto SST adaptada al evento
-    const analisisSST = [
-        {
-            num: "1º Porqué",
-            pregunta: "¿Por qué ocurrió el incidente?",
-            respuesta: "Se produjo una descarga de pintura a alta presión que impactó directamente en la mano izquierda del trabajador, ocasionando una lesión superficial."
-        },
-        {
-            num: "2º Porqué",
-            pregunta: "¿Por qué ocurrió la descarga sobre la mano?",
-            respuesta: "El trabajador posicionó la mano izquierda en la línea de fuego (frente a la boquilla) mientras sostenía la pistola con la mano derecha manteniendo los dedos sobre el gatillo."
-        },
-        {
-            num: "3º Porqué",
-            pregunta: "¿Por qué se expuso a la línea de fuego?",
-            respuesta: "El operario intentó desobstruir y regular la boquilla de forma manual e intempestiva sin antes aislar/despresurizar el equipo ni bloquear el gatillo de seguridad."
-        },
-        {
-            num: "4º Porqué",
-            pregunta: "¿Por qué no se aplicó el procedimiento seguro?",
-            respuesta: "Falta de adherencia a los estándares de trabajo seguro (PETS) e IPERC para intervención de equipos con fluidos/aire a alta presión."
-        },
-        {
-            num: "5º Porqué (Causa Raíz)",
-            pregunta: "¿Por qué falló el control de seguridad?",
-            respuesta: "Causa Raíz: Deficiencia en el programa de capacitación práctica sobre liberación de presiones residuales y supervisión operativa para la corrección oportuna de actos subestándar en planta.",
-            esRaiz: true
-        }
-    ];
+    let analisis = [];
 
-    // Renderizar en el DOM
+    // Motor de análisis dinámico basado en la tipificación y palabras clave
+    if (esAccidente) {
+        // Enfoque Accidente de Trabajo (Lesión / Daño directo)
+        let lesion = "una lesión personal en el trabajador";
+        if (texto.includes("herida") || texto.includes("lesion") || texto.includes("quemadura")) {
+            lesion = "una lesión en el miembro afectado";
+        }
+
+        analisis.push({
+            num: "1º Porqué",
+            pregunta: "¿Por qué se produjo el Accidente de Trabajo?",
+            respuesta: `Porque se generó un impacto directo sobre la anatomía del trabajador, ocasionándole ${lesion}.`
+        });
+
+        if (texto.includes("linea de fuego") || texto.includes("boquilla") || texto.includes("gatillo") || texto.includes("mano")) {
+            analisis.push({
+                num: "2º Porqué",
+                pregunta: "¿Por qué el cuerpo del trabajador recibió el impacto/fuerza?",
+                respuesta: "Porque el colaborador expuso la extremidad directamente a la línea de fuego del equipo mientras mantenía el mecanismo de accionamiento (gatillo) presionado o al alcance."
+            });
+        } else {
+            analisis.push({
+                num: "2º Porqué",
+                pregunta: "¿Por qué el operario sufrió la exposición al agente de daño?",
+                respuesta: "Porque se ejecutó la maniobra sin respetar las distancias de seguridad ni la posición corporal fuera del área de interacción peligrosa."
+            });
+        }
+
+    } else {
+        // Enfoque Incidente / Casi Accidente (Desviación / Potencial)
+        analisis.push({
+            num: "1º Porqué",
+            pregunta: "¿Por qué ocurrió el incidente (casi-accidente)?",
+            respuesta: "Porque se produjo una liberación o interacción intempestiva del equipo sin control sobre la zona de influencia de la herramienta."
+        });
+
+        analisis.push({
+            num: "2º Porqué",
+            pregunta: "¿Por qué se generó la condición de riesgo no controlada?",
+            respuesta: "Porque se efectuó una manipulación sobre la zona operativa de la máquina mientras esta se encontraba energizada o con presión residual activa."
+        });
+    }
+
+    // 3º Porqué: Análisis del Acto / Condición Subestándar
+    if (texto.includes("obstru") || texto.includes("falla") || texto.includes("desperfecto") || texto.includes("atoro")) {
+        analisis.push({
+            num: "3º Porqué",
+            pregunta: "¿Por qué se intervino el equipo en condiciones de riesgo?",
+            respuesta: "Porque ante un evento operacional (obstrucción/desperfecto), el trabajador intentó corregir el fallo de forma inmediata e improvisada sin despresurizar/bloquear la herramienta previamente."
+        });
+    } else {
+        analisis.push({
+            num: "3º Porqué",
+            pregunta: "¿Por qué se realizó la maniobra sin el control adecuado?",
+            respuesta: "Porque el trabajador priorizó la continuidad de la tarea omitiendo el paso previo de aislamiento de energía o despresurización recomendada."
+        });
+    }
+
+    // 4º Porqué: Estándares y Procedimientos (PETS / IPERC)
+    analisis.push({
+        num: "4º Porqué",
+        pregunta: "¿Por qué no se aplicaron los controles del PETS / IPERC?",
+        respuesta: "Por falta de adherencia estricta a los estándares de trabajo seguro para intervención de herramientas bajo presión y una evaluación del riesgo en la línea de fuego no interiorizada durante la tarea."
+    });
+
+    // 5º Porqué: Causa Raíz (Gestión / Supervisión / Capacitación)
+    analisis.push({
+        num: "5º Porqué (Causa Raíz)",
+        pregunta: "¿Por qué fallaron los mecanismos de prevención y control?",
+        respuesta: "Causa Raíz: Deficiencia en la eficacia de la capacitación práctica sobre manejo de energías peligrosas/presión y debilidad en los esquemas de supervisión para identificar y corregir actos subestándares en planta.",
+        esRaiz: true
+    });
+
+    // Renderizado en interfaz
     contenedor.innerHTML = "";
-    analisisSST.forEach(item => {
+    analisis.forEach(item => {
         const div = document.createElement('div');
         div.className = `porque-box ${item.esRaiz ? 'causa-raiz' : ''}`;
         div.innerHTML = `
@@ -202,8 +292,8 @@ function generarAnalisisSST() {
     });
 }
 
-// Generar al cargar la página por primera vez
-window.onload = generarAnalisisSST;
+// Ejecución inicial al cargar la página
+window.onload = ejecutarAnalisisSST;
 </script>
 
 </body>
